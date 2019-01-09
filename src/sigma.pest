@@ -1,6 +1,20 @@
-data_type = { "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" | "bool" | "str" }
-var_name = { (ASCII_ALPHA ~ ASCII_DIGIT*)+ ~ "?"? }
-var = { var_name ~ WHITE_SPACE* ~ ":"? ~ WHITE_SPACE* ~ data_type? }
-var_pair = { "{{" ~ WHITE_SPACE* ~ var ~ WHITE_SPACE* ~ "}}" }
+data_type = { 
+    "u8" | "i8"
+  | "u16" | "i16"
+  | "u32" | "i32"
+  | "u64" | "i64"
+  | "bool" | "str"
+}
+var_name = { ((ASCII_ALPHA ~ ("_" | "$")*) ~ ASCII_DIGIT*)+ }
+nullable = { "?" }
+var = { var_name ~ nullable? ~ WHITE_SPACE* ~ ":"? ~ WHITE_SPACE* ~ data_type? }
+function_name = { ((ASCII_ALPHA_UPPER ~ "_"*) ~ ASCII_DIGIT*)+ }
+pipe_op = { "|>" | "|" }
+function = { pipe_op ~ WHITE_SPACE* ~ function_name }
+pair_open = { "{{" }
+pair_close = { "}}" }
+
+var_pair = 
+  { pair_open ~ WHITE_SPACE* ~ var ~ WHITE_SPACE* ~ (function | WHITE_SPACE)* ~ WHITE_SPACE* ~ pair_close }
 
 sigma = _{ SOI ~ (var_pair | ANY )* ~ EOI }
