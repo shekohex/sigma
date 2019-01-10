@@ -4,6 +4,7 @@ data_type = {
   | "u16" | "i16"
   | "u32" | "i32"
   | "u64" | "i64"
+  | "f32" | "f64"
   | "bool" | "str"
   | unlisted_data_type // traaap !
 }
