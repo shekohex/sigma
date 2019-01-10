@@ -1,20 +1,23 @@
-data_type = { 
+unlisted_data_type = @{ (ASCII_ALPHA_LOWER+ ~ ASCII_DIGIT*) } // this was added to catch unknown types
+data_type = {
     "u8" | "i8"
   | "u16" | "i16"
   | "u32" | "i32"
   | "u64" | "i64"
   | "bool" | "str"
+  | unlisted_data_type // traaap !
 }
 var_name = { ((ASCII_ALPHA ~ ("_" | "$")*) ~ ASCII_DIGIT*)+ }
 nullable = { "?" }
-var = { var_name ~ nullable? ~ WHITE_SPACE* ~ ":"? ~ WHITE_SPACE* ~ data_type? }
+data_type_sep = { ":" }
+var = { var_name ~ nullable? ~ WHITE_SPACE* ~ data_type_sep? ~ WHITE_SPACE* ~ data_type? }
 function_name = { ((ASCII_ALPHA_UPPER ~ "_"*) ~ ASCII_DIGIT*)+ }
 pipe_op = { "|>" | "|" }
-function = { pipe_op ~ WHITE_SPACE* ~ function_name }
+function = { pipe_op ~ (NEWLINE | WHITE_SPACE)* ~ function_name }
 pair_open = { "{{" }
 pair_close = { "}}" }
 
 var_pair = 
-  { pair_open ~ WHITE_SPACE* ~ var ~ WHITE_SPACE* ~ (function | WHITE_SPACE)* ~ WHITE_SPACE* ~ pair_close }
+  { pair_open ~ (NEWLINE | WHITE_SPACE)* ~ var ~ (NEWLINE | WHITE_SPACE)* ~ (function | (NEWLINE | WHITE_SPACE))* ~ (NEWLINE | WHITE_SPACE)* ~ pair_close }
 
 sigma = _{ SOI ~ (var_pair | ANY )* ~ EOI }
