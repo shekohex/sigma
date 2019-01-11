@@ -53,7 +53,7 @@ sigma uses [`pest`](https://pest.rs/), The Elegant Parser under the hood to writ
 that means it will be exteramly fast in parsing your templete, also it uses regex crate to replace your
 data in the template.
 
-Here is some benchmacrk on my old pc running intel quad core q9650 processor and an HDD hard drive
+Here is some benchmacrk on my old pc running intel quad core q9650 processor and an Hard Disk Drive (HDD)
 ```
 small_data_1kb_parse: 55.300 us
 small_data_10kb_parse: 516.29 us
