@@ -192,7 +192,7 @@ pub struct Function {
 /// Sigma
 ///
 /// TODO: Add examples here
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Sigma<'s> {
   vars: HashMap<&'s str, Variable<'s>>,
   registry: HashMap<String, String>,
