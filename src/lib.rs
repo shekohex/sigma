@@ -15,7 +15,7 @@
 //! for your input. and for those how wanna play, it also could be untyped.
 //! also it has a good error checking at parse time of your template:
 //! Here is some error examples:
-//! ```
+//! ```ignore
 //! --> 1:49
 //!   |
 //! 1 | my username is {{ username: str |> UPPERCASE |> NO_FUN }} WOW!
@@ -24,15 +24,25 @@
 //!   = undefined function: NO_FUN
 //! ```
 //!
-//! what if you fogot to register for some variable in your template ?
+//! what if you forgot to bind for some variable in your template ?
 //!
-//! ```
+//! ```ignore
 //!  --> 1:19
 //!   |
 //! 1 | my username is {{ username: str |> UPPERCASE |> NO_FUN }} WOW!
 //!   |                   ^------^
 //!   |
-//!   = undefined variable: username consider adding a register for it
+//!   = undefined variable: username consider adding a bind for it
+//! ```
+//! do you need extra help ? we got your back ;)
+//!
+//! ```ignore
+//! --> 1:35
+//!   |
+//! 1 | my username is {{ username: u32 | UPPERCAS }} WOW!
+//!   |                                   ^------^
+//!   |
+//!   = undefined function: UPPERCAS did you mean: UPPERCASE ?
 //! ```
 //!
 //! ##### Fast:
@@ -48,51 +58,47 @@
 //!
 //! * Simple:
 //!
-//! ```rust
+//! ```ignore
 //! use sigma::Sigma;
-//!   
-//! let result = Sigma::new()
-//!  .parse("Hello {{ username }}") // using {{ ... }} for the template.
-//!  .map_err(|e| println!("{}", e))? // for pretty printing the error..
-//!  .register("username", "someone")
-//!  .compile()
-//!  .map_err(|e| println!("{}", e))?;
+//!
+//! let result = Sigma::new("Hello {{ username }}") // using {{ ... }} for the template.
+//!  .bind("username", "someone") // bind the vars with values
+//!  .parse() // you must parse your template first
+//!  .map_err(|e| eprintln!("{}", e))? // for pretty printing the error..
+//!  .compile();
 //! assert_eq!("Hello someone", result);
 //! ```
 //! * with optinal variables
-//! ```rust
+//! ```ignore
 //! use sigma::Sigma;
 //!   
-//! let result = Sigma::new()
-//!  .parse("Hello {{ username? }}") // using `?` to tell the parser it maybe `null`.
-//!  .map_err(|e| println!("{}", e))? // for pretty printing the error..
-//!  .compile()
-//!  .map_err(|e| println!("{}", e))?;
+//! let result = Sigma::new("Hello {{ username? }}") // using `?` to tell the parser it maybe `null`.
+//!  .parse()
+//!  .map_err(|e| eprintln!("{}", e))? // for pretty printing the error..
+//!  .compile();
 //! assert_eq!("Hello ", result);
 //! ```
 //! * what about types ?
 //!
-//! ```rust
+//! ```ignore
 //! use sigma::Sigma;
 //!   
-//! let result = Sigma::new()
-//!  .parse("Hello {{ username: str }}") // u8, u32 ? bool ! use all ?.
-//!  .map_err(|e| println!("{}", e))? // for pretty printing the error..
-//!  .register("username", "someone")
-//!  .compile()
-//!  .map_err(|e| println!("{}", e))?;
+//! let result = Sigma::new("Hello {{ username: str }}") // u8, u32 ? a bool ?.
+//!  .bind("username", "someone")
+//!  .parse()
+//!  .map_err(|e| eprintln!("{}", e))? // for pretty printing the error..
+//!  .compile();
 //! assert_eq!("Hello someone", result);
 //! ```
 //! * how about functions ?
-//! ```rust
+//! ```ignore
 //! use sigma::Sigma;
 //!   
-//! let result = Sigma::new()
-//!  .parse("Hello {{ username: str | UPPERCASE }}") // functions uses the `|` operator or if you love `|>`.
-//!  .map_err(|e| println!("{}", e))? // for pretty printing the error..
-//!  .register("username", "someone")
-//!  .compile()
-//!  .map_err(|e| println!("{}", e))?;
+//! let result = Sigma::new("Hello {{ username: str | UPPERCASE }}") // functions uses the `|` operator or if you love `|>` you can use it too.
+//!  .bind("username", "someone")
+//!  .parse()
+//!  .map_err(|e| eprintln!("{}", e))? // for pretty printing the error..
+//!  .compile();
 //! assert_eq!("Hello SOMEONE", result);
 //! ```
 mod parser;
@@ -103,6 +109,7 @@ use pest::{
   iterators::{Pair, Pairs},
   Parser, Span,
 };
+use regex::{NoExpand, Regex};
 use std::collections::HashMap;
 
 type SigmaResult<'a, T> = Result<T, PestError<Rule>>;
@@ -111,31 +118,56 @@ type SigmaResult<'a, T> = Result<T, PestError<Rule>>;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DataType {
   /// The 8-bit unsigned integer type.
+  ///
+  /// ex: `{{ data: u8 }}`
   U8,
   /// The 8-bit signed integer type.
+  ///
+  /// ex: `{{ data: i8 }}`
   I8,
   /// The 16-bit unsigned integer type.
+  ///
+  /// ex: `{{ data: u16 }}`
   U16,
   /// The 16-bit signed integer type.
+  ///
+  /// ex: `{{ data: i16 }}`
   I16,
   /// The 32-bit unsigned integer type.
+  ///
+  /// ex: `{{ data: u32 }}`
   U32,
   /// The 32-bit signed integer type.
+  ///
+  /// ex: `{{ data: i32 }}`
   I32,
   /// The 64-bit unsigned integer type.
+  ///
+  /// ex: `{{ data: u64 }}`
   U64,
   /// The 64-bit signed integer type.
+  ///
+  /// ex: `{{ data: i64 }}`
   I64,
   /// The 32-bit floating point type.
+  ///
+  /// ex: `{{ data: f32 }}`
   F32,
   /// The 64-bit floating point type.
+  ///
+  /// ex: `{{ data: f64 }}`
   F64,
   /// The boolean type.
+  ///
+  /// ex: `{{ data: bool }}`
   Bool,
   /// String.
+  ///
+  /// ex: `{{ data: str }}`
   Str,
 }
 
+#[doc(hidden)]
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Variable<'a> {
   pub name: &'a str,
@@ -145,101 +177,120 @@ pub struct Variable<'a> {
   pub location: (usize, usize),
   pub functions: Vec<(&'a str, Span<'a>)>,
   pub name_span: Option<Span<'a>>,
+  pub pair_str: &'a str,
 }
 
+#[doc(hidden)]
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Function<'b> {
-  pub name: &'b str,
-  pub pure: bool,
+pub struct Function {
+  pub name: String,
   pub call: fn(String) -> String,
 }
 
-#[derive(Debug, PartialEq, Eq, Default)]
+/// Sigma
+///
+/// TODO: Add examples here
+#[derive(Debug, PartialEq, Eq)]
 pub struct Sigma<'s> {
   vars: HashMap<&'s str, Variable<'s>>,
-  registry: HashMap<&'s str, &'s str>,
-  input: String,
-  functions: HashMap<&'s str, Function<'s>>,
+  registry: HashMap<String, String>,
+  input: &'s str,
+  is_parsed: bool,
+  functions: HashMap<&'s str, Function>,
 }
 
 impl<'s> Sigma<'s> {
-  pub fn new() -> Self {
-    let mut functions = HashMap::new();
-
-    let upper_case_fn = Function {
-      name: "UPPERCASE",
-      pure: true,
-      call: |input| input.to_uppercase(),
-    };
-
-    let lower_case_fn = Function {
-      name: "LOWERCASE",
-      pure: true,
-      call: |input| input.to_lowercase(),
-    };
-    functions.insert("UPPERCASE", upper_case_fn);
-    functions.insert("LOWERCASE", lower_case_fn);
-    Self {
-      input: String::new(),
+  /// Create new Sigma with some template
+  pub fn new(input: &'s str) -> Self {
+    let sigma = Self {
+      input,
       vars: HashMap::new(),
-      functions,
+      functions: HashMap::new(),
+      is_parsed: false,
       registry: HashMap::new(),
-    }
+    };
+
+    let sigma = sigma.register_fn("UPPERCASE", |input| input.to_uppercase());
+    sigma.register_fn("LOWERRCASE", |input| input.to_lowercase())
   }
 
-  /// Parse the input and return expressions
-  pub fn parse(mut self, input: &'s str) -> SigmaResult<'s, Self> {
-    for sigma in SigmaParser::parse(Rule::sigma, &input)? {
+  /// bind some key in the template for some value
+  pub fn bind(mut self, key: &'s str, value: &'s str) -> Self {
+    self.registry.insert(key.to_owned(), value.to_owned());
+    self
+  }
+
+  /// bind one or more keys with values in one run.
+  pub fn bind_map(mut self, map: HashMap<String, String>) -> Self {
+    self.registry.extend(map);
+    self
+  }
+
+  /// remove all the previous binded keys, and use that one
+  pub fn override_bind(mut self, map: HashMap<String, String>) -> Self {
+    self.registry = map;
+    self
+  }
+
+  /// register a helper function
+  pub fn register_fn(
+    mut self,
+    func_name: &'s str,
+    func: fn(String) -> String,
+  ) -> Self {
+    self.functions.insert(
+      func_name,
+      Function {
+        name: func_name.to_uppercase(),
+        call: func,
+      },
+    );
+    self
+  }
+
+  /// Parse the template before compiling it to ensure no runtime erros.
+  pub fn parse(mut self) -> SigmaResult<'s, Self> {
+    for sigma in SigmaParser::parse(Rule::sigma, &self.input)? {
       if sigma.as_rule() == Rule::var_pair {
         self.parse_var_pair(sigma)?;
       }
     }
-    self.input = input.into();
+    self.is_parsed = true;
     Ok(self)
   }
 
-  pub fn register(mut self, key: &'s str, value: &'s str) -> Self {
-    self.registry.insert(key, value);
-    self
-  }
-
-  pub fn compile(mut self) -> SigmaResult<'s, String> {
+  /// Compile the template with the binded values
+  ///
+  /// ## Panics
+  /// this will panic if the current template
+  /// not parsed yet.
+  pub fn compile(self) -> SigmaResult<'s, String> {
+    assert!(self.is_parsed, "The template must be parsed first");
+    let mut output = self.input.to_owned(); // copy the input
     for var in self.vars.values() {
+      let var_regex = Regex::new(&regex::escape(var.pair_str)).unwrap();
       if let Some(value) = self.registry.get(var.name) {
         let mut current_data = (*value).to_owned();
         for function in &var.functions {
           let f = &self.functions[&function.0]; // we are sure it will be there.
           current_data = (f.call)(current_data);
         }
-        self
-          .input
-          .replace_range(var.location.0..var.location.1, &current_data);
+        self.validate_data_type(&var, &current_data)?;
+        output = var_regex
+          .replace_all(&output, NoExpand(&current_data))
+          .to_string();
       } else if var.nullable {
-        self.input.replace_range(var.location.0..var.location.1, "");
-      } else {
-        let mut extra_help = String::new();
-        if let Some(matches) = parser::did_you_mean(var.name, self.vars.keys())
-        {
-          extra_help = format!("Did you mean: `{}` ?", matches);
-        } else {
-          extra_help = "consider adding a register for it".to_owned();
-        }
-        return Err(PestError::new_from_span(
-          ErrorVariant::CustomError {
-            message: format!("undefined variable: {} {}", var.name, extra_help),
-          },
-          var.name_span.clone().unwrap(),
-        ));
+        // it must be nullable then
+        output = var_regex.replace_all(&output, NoExpand("")).to_string();
       }
     }
-    Ok(self.input)
+    Ok(output)
   }
 
   // TODO: Refactor this function
-  // TODO: Validate Datatypes
-  // TODO: Parse functions in seprate function
   fn parse_var_pair(&mut self, pair: Pair<'s, Rule>) -> SigmaResult<()> {
     let mut variable = Variable::default();
+    variable.pair_str = pair.as_str();
     let mut inner_rules = pair.into_inner();
     let open_pairs = inner_rules.next().unwrap();
     let var = inner_rules.next().unwrap();
@@ -277,6 +328,26 @@ impl<'s> Sigma<'s> {
     }
     let mut variable = self.parse_function(inner_rules, variable)?;
     variable.location = (open_pairs.as_span().start(), variable.location.1);
+    // check if we have a back value for this variable ?
+    if !self.registry.contains_key(variable.name) && !variable.nullable {
+      let extra_help;
+      if let Some(matches) =
+        parser::did_you_mean(variable.name, self.registry.keys())
+      {
+        extra_help = format!("did you mean: `{}` ?", matches);
+      } else {
+        extra_help = "consider adding a bind for it".to_owned();
+      }
+      return Err(PestError::new_from_span(
+        ErrorVariant::CustomError {
+          message: format!(
+            "undefined variable: `{}` {}",
+            variable.name, extra_help
+          ),
+        },
+        variable.name_span.clone().unwrap(),
+      ));
+    }
     self.vars.insert(variable.name, variable);
     Ok(())
   }
@@ -307,7 +378,7 @@ impl<'s> Sigma<'s> {
         ];
         let mut extra_help = String::new();
         if let Some(matches) = parser::did_you_mean(val, p_vals.iter()) {
-          extra_help = format!("Did you mean: `{}` ?", matches);
+          extra_help = format!("did you mean: `{}` ?", matches);
         }
         return Err(PestError::new_from_span(
           ErrorVariant::CustomError {
@@ -343,10 +414,11 @@ impl<'s> Sigma<'s> {
           let function_name = function.next().unwrap();
           if !self.functions.contains_key(function_name.as_str()) {
             let mut extra_help = String::new();
-            if let Some(matches) =
-              parser::did_you_mean(function_name.as_str(), self.functions.keys())
-            {
-              extra_help = format!("Did you mean: `{}` ?", matches);
+            if let Some(matches) = parser::did_you_mean(
+              function_name.as_str(),
+              self.functions.keys(),
+            ) {
+              extra_help = format!("did you mean: `{}` ?", matches);
             }
             return Err(PestError::new_from_span(
               ErrorVariant::CustomError {
@@ -372,8 +444,73 @@ impl<'s> Sigma<'s> {
     }
     Ok(var)
   }
+
+  fn validate_data_type(
+    &self,
+    var: &Variable,
+    data: &str,
+  ) -> SigmaResult<'s, ()> {
+    if let Some(data_type) = &var.data_type {
+      use self::DataType::*;
+      let data_type_error = {
+        let extra = if data.len() > 15 { "..." } else { "" };
+        PestError::<Rule>::new_from_span(
+          ErrorVariant::CustomError {
+            message: format!(
+              "cannot parse input `{}{}` into `{:?}` for var `{}` !",
+              data.chars().take(15).collect::<String>(),
+              extra,
+              data_type.0, var.name
+            ),
+          },
+          data_type.1.clone(),
+        )
+      };
+      match data_type.0 {
+        U8 => {
+          data.parse::<u8>().map_err(|_| data_type_error)?;
+        },
+        I8 => {
+          data.parse::<i8>().map_err(|_| data_type_error)?;
+        },
+        U16 => {
+          data.parse::<u16>().map_err(|_| data_type_error)?;
+        },
+        I16 => {
+          data.parse::<i16>().map_err(|_| data_type_error)?;
+        },
+        U32 => {
+          data.parse::<u32>().map_err(|_| data_type_error)?;
+        },
+        I32 => {
+          data.parse::<i32>().map_err(|_| data_type_error)?;
+        },
+        U64 => {
+          data.parse::<u64>().map_err(|_| data_type_error)?;
+        },
+        I64 => {
+          data.parse::<i64>().map_err(|_| data_type_error)?;
+        },
+        F32 => {
+          data.parse::<f32>().map_err(|_| data_type_error)?;
+        },
+        F64 => {
+          data.parse::<f64>().map_err(|_| data_type_error)?;
+        },
+        Bool => {
+          data.parse::<bool>().map_err(|_| data_type_error)?;
+        },
+        _ => {
+          // it must be a string then
+        },
+      };
+      return Ok(());
+    }
+    Ok(())
+  }
 }
 
+// TODO: Add more tests here.
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -381,24 +518,22 @@ mod tests {
   #[should_panic]
   fn missing_data_type() {
     let input = "{{ username: }}";
-    let _ = Sigma::new()
-      .parse(input)
+    let _ = Sigma::new(input)
+      .bind("username", "test")
+      .parse()
       .unwrap()
-      .register("username", "test")
-      .compile()
-      .unwrap();
+      .compile();
   }
 
   #[test]
   #[should_panic]
   fn unknown_data_type() {
     let input = "{{ username: unknown }}";
-    let output = Sigma::new()
-      .parse(input)
+    let output = Sigma::new(input)
+      .bind("username", "test")
+      .parse()
       .unwrap()
-      .register("username", "test")
-      .compile()
-      .unwrap();
+      .compile();
     println!("{:?}", output);
   }
 }
