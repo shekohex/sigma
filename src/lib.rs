@@ -13,7 +13,9 @@
 //!
 //! sigma is also typed, that means that it has the idea of built-in validators
 //! for your input. and for those how wanna play, it also could be untyped.
-//! also it has a good error checking at parse time of your template:
+//! also it has a good error checking at parse time of your template.
+//! the only error that could happen in runtime is that the input data fails to
+//! be parsed to your data types in your templates.
 //! Here is some error examples:
 //! ```ignore
 //! --> 1:49
@@ -65,7 +67,7 @@
 //!  .bind("username", "someone") // bind the vars with values
 //!  .parse() // you must parse your template first
 //!  .map_err(|e| eprintln!("{}", e))? // for pretty printing the error..
-//!  .compile();
+//!  .compile()?;
 //! assert_eq!("Hello someone", result);
 //! ```
 //! * with optinal variables
@@ -75,7 +77,7 @@
 //! let result = Sigma::new("Hello {{ username? }}") // using `?` to tell the parser it maybe `null`.
 //!  .parse()
 //!  .map_err(|e| eprintln!("{}", e))? // for pretty printing the error..
-//!  .compile();
+//!  .compile()?;
 //! assert_eq!("Hello ", result);
 //! ```
 //! * what about types ?
@@ -87,7 +89,7 @@
 //!  .bind("username", "someone")
 //!  .parse()
 //!  .map_err(|e| eprintln!("{}", e))? // for pretty printing the error..
-//!  .compile();
+//!  .compile()?;
 //! assert_eq!("Hello someone", result);
 //! ```
 //! * how about functions ?
@@ -98,7 +100,7 @@
 //!  .bind("username", "someone")
 //!  .parse()
 //!  .map_err(|e| eprintln!("{}", e))? // for pretty printing the error..
-//!  .compile();
+//!  .compile()?;
 //! assert_eq!("Hello SOMEONE", result);
 //! ```
 mod parser;
@@ -460,7 +462,8 @@ impl<'s> Sigma<'s> {
               "cannot parse input `{}{}` into `{:?}` for var `{}` !",
               data.chars().take(15).collect::<String>(),
               extra,
-              data_type.0, var.name
+              data_type.0,
+              var.name
             ),
           },
           data_type.1.clone(),
