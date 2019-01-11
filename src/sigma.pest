@@ -21,4 +21,4 @@ pair_close = { "}}" }
 var_pair = 
   { pair_open ~ (NEWLINE | WHITE_SPACE)* ~ var ~ (NEWLINE | WHITE_SPACE)* ~ (function | (NEWLINE | WHITE_SPACE))* ~ (NEWLINE | WHITE_SPACE)* ~ pair_close }
 
-sigma = _{ SOI ~ (var_pair | ANY )* ~ EOI }
+sigma = _{ SOI ~ NEWLINE* ~ (var_pair | ANY)* ~ NEWLINE* ~ EOI }
