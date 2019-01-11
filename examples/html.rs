@@ -17,7 +17,7 @@ fn main() -> Result<(), ()> {
     .map_err(|e| eprintln!("Parse Error:\n{}", e))? // error handling..
     .compile()
     .map_err(|e| eprintln!("Compile Error:\n{}", e))?; // error handling..
-  
+
   println!("{}", result);
   Ok(())
 }
