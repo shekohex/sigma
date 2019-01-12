@@ -103,6 +103,14 @@
 //!  .compile()?;
 //! assert_eq!("Hello SOMEONE", result);
 //! ```
+//! * love macros ?
+//! ```ignore
+//! use sigma::sigma;
+//! let username = "someone";
+//! let result = sigma!("Hello {{ username }}", username); // the macro return the result so you can check for compile erros.
+//! assert_eq!("Hello someone", result.unwrap());
+//! ```
+//! 
 mod parser;
 
 use crate::parser::{Rule, SigmaParser};
@@ -213,6 +221,12 @@ impl<'s> Sigma<'s> {
     };
 
     let sigma = sigma.register_fn("UPPERCASE", |input| input.to_uppercase());
+    let sigma = sigma.register_fn("TRIM_END", |input| input.trim_end().to_owned());
+    let sigma = sigma.register_fn("TRIM_START", |input| input.trim_start().to_owned());
+    let sigma = sigma.register_fn("TRIM_START", |input| input.trim_start().to_owned());
+    let sigma =
+      sigma.register_fn("TRIM", |input| input.trim().to_owned());
+
     sigma.register_fn("LOWERRCASE", |input| input.to_lowercase())
   }
 
@@ -513,6 +527,22 @@ impl<'s> Sigma<'s> {
   }
 }
 
+#[macro_export]
+macro_rules! sigma {
+  ($template:expr, $($k:expr), *) => {
+    {
+      let mut map = std::collections::HashMap::new();
+      let s = $crate::Sigma::new($template);
+      $(
+        map.insert(stringify!($k).to_owned(), $k.to_owned());
+      )*
+      let s = s.bind_map(map);
+      let s = s.parse().map_err(|e| eprintln!("Parse Error:\n{}", e)).unwrap();
+      s.compile()
+    }
+  };
+}
+
 // TODO: Add more tests here.
 #[cfg(test)]
 mod tests {
@@ -538,5 +568,12 @@ mod tests {
       .unwrap()
       .compile();
     println!("{:?}", output);
+  }
+
+  #[test]
+  fn test_sigma_macro() {
+    let username = "someone";
+    let s = sigma!("{{ username }}", username);
+    assert_eq!("someone", s.unwrap());
   }
 }
