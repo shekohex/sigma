@@ -6,8 +6,6 @@ But here is some of it's gools.
 
 ---
 
-# Sigma: Simple, Safe and Fast Template language.
-
 Hi {{ name }} i'm sigma :wave: !
 
 ##### Simple:
@@ -112,6 +110,13 @@ let result = Sigma::new("Hello {{ username: str | UPPERCASE }}") // functions us
  .map_err(|e| eprintln!("{}", e))? // for pretty printing the error..
  .compile()?;
 assert_eq!("Hello SOMEONE", result);
+```
+* love macros ?
+```rust
+use sigma::sigma;
+let username = "someone";
+let result = sigma!("Hello {{ username }}", username); // the macro return the result so you can check for compile erros.
+assert_eq!("Hello someone", result.unwrap());
 ```
 
 ## Contributing
