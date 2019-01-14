@@ -5,6 +5,9 @@ license = "MIT"
 description = "Sigma σ is a Simple, Safe and Fast Template language"
 authors = ["Shady Khalifa <shekohex@gmail.com>"]
 repository = "https://github.com/shekohex/sigma.git"
+readme = "README.md"
+documentation = "https://docs.rs/sigma"
+homepage = "https://github.com/shekohex/sigma"
 keywords = ["template", "sigma"]
 edition = "2018"
 

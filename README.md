@@ -1,10 +1,8 @@
 # Sigma σ is a Simple, Safe and Fast Template language
 
-Currently Under Development..
-
-But here is some of it's gools.
-
----
+[![Latest version](https://img.shields.io/crates/v/sigma.svg)](https://crates.io/crates/sigma)
+[![Documentation](https://docs.rs/sigma/badge.svg)](https://docs.rs/sigma)
+![License](https://img.shields.io/crates/l/sigma.svg)
 
 Hi {{ name }} i'm sigma :wave: !
 
