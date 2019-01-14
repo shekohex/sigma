@@ -34,7 +34,7 @@
 //! 1 | my username is {{ username: str |> UPPERCASE |> NO_FUN }} WOW!
 //!   |                   ^------^
 //!   |
-//!   = undefined variable: username consider adding a bind for it
+//!   = unbinded variable: username consider adding a bind for it
 //! ```
 //! do you need extra help ? we got your back ;)
 //!
@@ -110,7 +110,6 @@
 //! let result = sigma!("Hello {{ username }}", username); // the macro return the result so you can check for compile erros.
 //! assert_eq!("Hello someone", result.unwrap());
 //! ```
-//! 
 mod parser;
 
 use crate::parser::{Rule, SigmaParser};
@@ -197,15 +196,16 @@ pub struct Function {
   pub call: fn(String) -> String,
 }
 
-/// Sigma
+/// Sigma, Template Language made simple !
 ///
 /// TODO: Add examples here
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Sigma<'s> {
   vars: HashMap<&'s str, Variable<'s>>,
-  registry: HashMap<String, String>,
+  registry: HashMap<&'s str, &'s str>,
   input: &'s str,
   is_parsed: bool,
+  ignore_unbinded: bool,
   functions: HashMap<&'s str, Function>,
 }
 
@@ -217,41 +217,52 @@ impl<'s> Sigma<'s> {
       vars: HashMap::new(),
       functions: HashMap::new(),
       is_parsed: false,
+      ignore_unbinded: false,
       registry: HashMap::new(),
     };
 
     let sigma = sigma.register_fn("UPPERCASE", |input| input.to_uppercase());
-    let sigma = sigma.register_fn("TRIM_END", |input| input.trim_end().to_owned());
-    let sigma = sigma.register_fn("TRIM_START", |input| input.trim_start().to_owned());
-    let sigma = sigma.register_fn("TRIM_START", |input| input.trim_start().to_owned());
     let sigma =
-      sigma.register_fn("TRIM", |input| input.trim().to_owned());
+      sigma.register_fn("TRIM_END", |input| input.trim_end().to_owned());
+    let sigma =
+      sigma.register_fn("TRIM_START", |input| input.trim_start().to_owned());
+    let sigma =
+      sigma.register_fn("TRIM_START", |input| input.trim_start().to_owned());
+    let sigma = sigma.register_fn("TRIM", |input| input.trim().to_owned());
 
     sigma.register_fn("LOWERRCASE", |input| input.to_lowercase())
   }
 
   /// bind some key in the template for some value
   pub fn bind(mut self, key: &'s str, value: &'s str) -> Self {
-    self.registry.insert(key.to_owned(), value.to_owned());
+    self.registry.insert(key, value);
     self
   }
 
   /// bind one or more keys with values in one run.
-  pub fn bind_map(mut self, map: HashMap<String, String>) -> Self {
+  pub fn bind_map(mut self, map: HashMap<&'s str, &'s str>) -> Self {
     self.registry.extend(map);
     self
   }
 
   /// remove all the previous binded keys, and use that one
-  pub fn override_bind(mut self, map: HashMap<String, String>) -> Self {
+  pub fn override_bind(mut self, map: HashMap<&'s str, &'s str>) -> Self {
     self.registry = map;
     self
   }
 
+  /// ignore parse error for unbinded variables
+  pub fn ignore_unbinded(mut self) -> Self {
+    self.ignore_unbinded = true;
+    self
+  }
+
   /// register a helper function
+  ///
+  /// The Function Name Must be in UPPERCASE
   pub fn register_fn(
     mut self,
-    func_name: &'s str,
+    func_name: &'static str,
     func: fn(String) -> String,
   ) -> Self {
     self.functions.insert(
@@ -345,7 +356,10 @@ impl<'s> Sigma<'s> {
     let mut variable = self.parse_function(inner_rules, variable)?;
     variable.location = (open_pairs.as_span().start(), variable.location.1);
     // check if we have a back value for this variable ?
-    if !self.registry.contains_key(variable.name) && !variable.nullable {
+    if !self.registry.contains_key(variable.name)
+      && !variable.nullable
+      && !self.ignore_unbinded
+    {
       let extra_help;
       if let Some(matches) =
         parser::did_you_mean(variable.name, self.registry.keys())
@@ -357,7 +371,7 @@ impl<'s> Sigma<'s> {
       return Err(PestError::new_from_span(
         ErrorVariant::CustomError {
           message: format!(
-            "undefined variable: `{}` {}",
+            "unbinded variable: `{}` {}",
             variable.name, extra_help
           ),
         },
@@ -368,6 +382,7 @@ impl<'s> Sigma<'s> {
     Ok(())
   }
 
+  #[inline(always)]
   fn parse_data_type<'b>(
     &self,
     pair: &Pair<Rule>,
@@ -398,7 +413,7 @@ impl<'s> Sigma<'s> {
         }
         return Err(PestError::new_from_span(
           ErrorVariant::CustomError {
-            message: format!("unknown Data type: `{}` {}", val, extra_help),
+            message: format!("unknown data type: `{}` {}", val, extra_help),
           },
           pair.as_span(),
         ));
@@ -461,6 +476,7 @@ impl<'s> Sigma<'s> {
     Ok(var)
   }
 
+  #[inline]
   fn validate_data_type(
     &self,
     var: &Variable,
@@ -527,14 +543,24 @@ impl<'s> Sigma<'s> {
   }
 }
 
+impl<'s> From<&'s str> for Sigma<'s> {
+  fn from(template: &'s str) -> Sigma<'s> {
+    Sigma::new(template)
+      .parse()
+      .map_err(|e| eprintln!("Parse Error:\n{}", e))
+      .unwrap()
+  }
+}
+
 #[macro_export]
+/// A helper macro to create a sigma with multi key-value
 macro_rules! sigma {
   ($template:expr, $($k:expr), *) => {
     {
       let mut map = std::collections::HashMap::new();
       let s = $crate::Sigma::new($template);
       $(
-        map.insert(stringify!($k).to_owned(), $k.to_owned());
+        map.insert(stringify!($k), $k);
       )*
       let s = s.bind_map(map);
       let s = s.parse().map_err(|e| eprintln!("Parse Error:\n{}", e)).unwrap();

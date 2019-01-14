@@ -8,9 +8,9 @@ fn main() -> Result<(), ()> {
     .read_to_string(&mut input)
     .expect("unable to read the file");
   let mut data = HashMap::new();
-  data.insert("name".to_owned(), "someone".to_owned());
-  data.insert("id".to_owned(), "100".to_owned());
-  data.insert("title".to_owned(), "Home Page".to_owned());
+  data.insert("name", "someone");
+  data.insert("id", "100");
+  data.insert("title", "Home Page");
   let result = Sigma::new(&input)
     .bind_map(data)
     .parse()

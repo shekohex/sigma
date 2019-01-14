@@ -10,7 +10,12 @@ fn main() {
     .read_line(&mut name)
     .expect("Could not read line");
   let waving = "👋";
-  let s = sigma!("Hello {{ name: str |> TRIM |> UPPERCASE }} ! I'm Sigma {{ waving }}", name, waving);
+  let name = name.as_str();
+  let s = sigma!(
+    "Hello {{ name: str |> TRIM |> UPPERCASE }} ! I'm Sigma {{ waving }}",
+    name,
+    waving
+  );
 
   match s {
     Ok(r) => println!("{}", r),
