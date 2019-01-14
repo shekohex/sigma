@@ -1,6 +1,6 @@
 [package]
 name = "sigma"
-version = "0.0.0" # remember to update this when it's ready to release
+version = "0.1.0" # remember to update this when it's ready to release
 license = "MIT"
 description = "Sigma σ is a Simple, Safe and Fast Template language"
 authors = ["Shady Khalifa <shekohex@gmail.com>"]

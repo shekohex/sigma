@@ -50,9 +50,9 @@
 //! ##### Fast:
 //!
 //! sigma uses [`pest`](https://pest.rs/), The Elegant Parser under the hood to write it's grammar.
-//! that means it will be exteramly fast in parsing your templete.
+//! that means it will be exteramly fast in parsing your templete, also it uses
+//! regex crate to replace your data in the template.
 //!
-//! // TODO: Add some benchmarks here
 //!
 //! ### Examples
 //!
@@ -198,7 +198,20 @@ pub struct Function {
 
 /// Sigma, Template Language made simple !
 ///
-/// TODO: Add examples here
+/// Example:
+/// ```
+/// # use sigma::{Sigma, sigma};
+/// # fn main() -> Result<(), ()> {
+/// let result = Sigma::new("Hello {{ username }}") // using {{ ... }} for the template.
+///     .bind("username", "someone") // bind the vars with values
+///     .parse() // you must parse your template first
+///     .map_err(|e| eprintln!("{}", e))? // for pretty printing the error..
+///     .compile()
+///     .map_err(|e| eprintln!("{}", e))?;
+/// assert_eq!("Hello someone", result);
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Sigma<'s> {
   vars: HashMap<&'s str, Variable<'s>>,
