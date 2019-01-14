@@ -125,7 +125,7 @@ You are welcome to contribute to this project, just open a PR.
 
 * **Shady Khalifa** - _Initial work_
 
-See also the list of [contributors](contributors) who participated in this project.
+See also the list of [contributors](https://github.com/shekohex/sigma/contributors) who participated in this project.
 
 ## License
 
